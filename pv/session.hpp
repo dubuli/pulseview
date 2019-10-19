@@ -38,6 +38,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QElapsedTimer>
 
 #ifdef ENABLE_FLOW
 #include <gstreamermm.h>
@@ -171,9 +172,10 @@ public:
 
 	void set_default_device();
 
-	void load_init_file(const string &file_name, const string &format);
+	void load_init_file(const string &file_name, const string &format,
+		const string &setup_file_name);
 
-	void load_file(QString file_name,
+	void load_file(QString file_name, QString setup_file_name = QString(),
 		shared_ptr<sigrok::InputFormat> format = nullptr,
 		const map<string, Glib::VariantBase> &options =
 			map<string, Glib::VariantBase>());
@@ -304,6 +306,8 @@ private:
 	bool out_of_memory_;
 	bool data_saved_;
 	bool frame_began_;
+
+	QElapsedTimer acq_time_;
 
 #ifdef ENABLE_FLOW
 	RefPtr<Pipeline> pipeline_;

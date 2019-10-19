@@ -525,7 +525,8 @@ Session::input_format_options(vector<string> user_spec,
 	return result;
 }
 
-void Session::load_init_file(const string &file_name, const string &format)
+void Session::load_init_file(const string &file_name,
+	const string &format, const string &setup_file_name)
 {
 	shared_ptr<InputFormat> input_format;
 	map<string, Glib::VariantBase> input_opts;
@@ -549,12 +550,12 @@ void Session::load_init_file(const string &file_name, const string &format)
 			input_format->options());
 	}
 
-	load_file(QString::fromStdString(file_name), input_format, input_opts);
+	load_file(QString::fromStdString(file_name), QString::fromStdString(setup_file_name),
+		input_format, input_opts);
 }
 
-void Session::load_file(QString file_name,
-	shared_ptr<sigrok::InputFormat> format,
-	const map<string, Glib::VariantBase> &options)
+void Session::load_file(QString file_name, QString setup_file_name,
+	shared_ptr<sigrok::InputFormat> format, const map<string, Glib::VariantBase> &options)
 {
 	const QString errorMessage(
 		QString("Failed to load file %1").arg(file_name));
@@ -582,10 +583,13 @@ void Session::load_file(QString file_name,
 		return;
 	}
 
-	// Auto-load the setup if one exists
-	QString setup_file_name = file_name;
-	setup_file_name.truncate(setup_file_name.lastIndexOf('.'));
-	setup_file_name.append(".pvs");
+	// Use the input file with .pvs extension if no setup file was given
+	if (setup_file_name.isEmpty()) {
+		setup_file_name = file_name;
+		setup_file_name.truncate(setup_file_name.lastIndexOf('.'));
+		setup_file_name.append(".pvs");
+	}
+
 	if (QFileInfo::exists(setup_file_name) && QFileInfo(setup_file_name).isReadable()) {
 		QSettings settings_storage(setup_file_name, QSettings::IniFormat);
 		restore_setup(settings_storage);
@@ -819,6 +823,11 @@ void Session::remove_decode_signal(shared_ptr<data::DecodeSignal> signal)
 void Session::set_capture_state(capture_state state)
 {
 	bool changed;
+
+	if (state == Running)
+		acq_time_.restart();
+	if (state == Stopped)
+		qDebug("Acquisition took %.2f s", acq_time_.elapsed() / 1000.);
 
 	{
 		lock_guard<mutex> lock(sampling_mutex_);

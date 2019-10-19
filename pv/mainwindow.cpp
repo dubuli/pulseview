@@ -399,10 +399,10 @@ void MainWindow::remove_session(shared_ptr<Session> session)
 }
 
 void MainWindow::add_session_with_file(string open_file_name,
-	string open_file_format)
+	string open_file_format, string open_setup_file_name)
 {
 	shared_ptr<Session> session = add_session();
-	session->load_init_file(open_file_name, open_file_format);
+	session->load_init_file(open_file_name, open_file_format, open_setup_file_name);
 }
 
 void MainWindow::add_default_session()
@@ -511,6 +511,22 @@ void MainWindow::setup_ui()
 	view_colored_bg_shortcut_ = new QShortcut(QKeySequence(Qt::Key_B), this, SLOT(on_view_colored_bg_shortcut()));
 	view_colored_bg_shortcut_->setAutoRepeat(false);
 
+	zoom_in_shortcut_ = new QShortcut(QKeySequence(Qt::Key_Plus), this, SLOT(on_zoom_in_shortcut_triggered()));
+	zoom_in_shortcut_->setAutoRepeat(false);
+
+	zoom_in_shortcut_2_ = new QShortcut(QKeySequence(Qt::Key_Up), this, SLOT(on_zoom_in_shortcut_triggered()));
+
+	zoom_out_shortcut_ = new QShortcut(QKeySequence(Qt::Key_Minus), this, SLOT(on_zoom_out_shortcut_triggered()));
+	zoom_out_shortcut_->setAutoRepeat(false);
+
+	zoom_out_shortcut_2_ = new QShortcut(QKeySequence(Qt::Key_Down), this, SLOT(on_zoom_out_shortcut_triggered()));
+
+	home_shortcut_ = new QShortcut(QKeySequence(Qt::Key_Home), this, SLOT(on_scroll_to_start_triggered()));
+	home_shortcut_->setAutoRepeat(false);
+
+	end_shortcut_ = new QShortcut(QKeySequence(Qt::Key_End), this, SLOT(on_scroll_to_end_triggered()));
+	end_shortcut_->setAutoRepeat(false);
+
 	// Set up the tab area
 	new_session_button_ = new QToolButton();
 	new_session_button_->setIcon(QIcon::fromTheme("document-new",
@@ -599,6 +615,19 @@ void MainWindow::restore_ui_settings()
 		resize(1000, 720);
 
 	settings.endGroup();
+}
+
+void MainWindow::zoom_current_view(double steps)
+{
+	shared_ptr<Session> session = get_tab_session(session_selector_.currentIndex());
+
+	if (!session)
+		return;
+
+	shared_ptr<views::ViewBase> v = session.get()->main_view();
+	views::trace::View *tv =
+		qobject_cast<views::trace::View*>(v.get());
+	tv->zoom(steps);
 }
 
 shared_ptr<Session> MainWindow::get_tab_session(int index) const
@@ -947,6 +976,39 @@ void MainWindow::on_settingViewShowAnalogMinorGrid_changed(const QVariant new_va
 		if (view)
 			view->enable_show_analog_minor_grid(state);
 	}
+}
+
+void MainWindow::on_zoom_out_shortcut_triggered()
+{
+	zoom_current_view(-1);
+}
+
+void MainWindow::on_zoom_in_shortcut_triggered()
+{
+	zoom_current_view(1);
+}
+
+void MainWindow::on_scroll_to_start_triggered()
+{
+	scroll_to_start_or_end(true);
+}
+
+void MainWindow::on_scroll_to_end_triggered()
+{
+	scroll_to_start_or_end(false);
+}
+
+void MainWindow::scroll_to_start_or_end(bool start)
+{
+	shared_ptr<Session> session = get_tab_session(session_selector_.currentIndex());
+
+	if (!session)
+		return;
+
+	shared_ptr<views::ViewBase> v = session.get()->main_view();
+	views::trace::View *tv =
+		qobject_cast<views::trace::View*>(v.get());
+	tv->set_h_offset(start ? 0 : tv->get_h_scrollbar_maximum());
 }
 
 void MainWindow::on_close_current_tab()
